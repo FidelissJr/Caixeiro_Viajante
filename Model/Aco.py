@@ -19,49 +19,13 @@ class ACO:
     self.evaporacao = evaporacao  # taxa de evaporação
     self.formigas = []  # lista de formigas
 
-    lista_cidades = [
-        cidade for cidade in range(1, self.grafo.num_vertices + 1)
-    ]
+    lista_cidades = criarCidades(grafo.num_vertices)
     # cria as formigas colocando cada uma em uma cidade
-    for k in range(self.num_formigas):
-      cidade_formiga = random.choice(lista_cidades)
-      lista_cidades.remove(cidade_formiga)
-      self.formigas.append(Formiga(cidade=cidade_formiga))
-      if not lista_cidades:
-        lista_cidades = [
-            cidade for cidade in range(1, self.grafo.num_vertices + 1)
-        ]
-
+    self.formigas = criarFormigas(self.num_formigas, lista_cidades)
     # calcula o custo guloso pra usar na inicialização do feromônio
-    custo_guloso = 0.0  # custo guloso
-    vertice_inicial = random.randint(1, grafo.num_vertices)  # seleciona um vértice aleatório
-    vertice_corrente = vertice_inicial
-    visitados = [vertice_corrente]  # lista de visitados
-
-    while True:
-      vizinhos = self.grafo.vizinhos[vertice_corrente][:]
-      custos, escolhidos = [], {}
-      for vizinho in vizinhos:
-        if vizinho not in visitados:
-          custo = self.grafo.obterCustoAresta(vertice_corrente, vizinho)
-          escolhidos[custo] = vizinho
-          custos.append(custo)
-      if len(visitados) == self.grafo.num_vertices:
-        break
-      min_custo = min(custos)  # pega o menor custo da lista
-      custo_guloso += min_custo  # adiciona o custo ao total
-      vertice_corrente = escolhidos[min_custo]  # atualiza o vértice corrente
-      visitados.append(
-          vertice_corrente)  # marca o vértice corrente como visitado
-
-    # adiciona o custo do último visitado ao custo_guloso
-    custo_guloso += self.grafo.obterCustoAresta(visitados[-1], vertice_inicial)
-
+    custo_guloso = obterCustoGuloso(self.grafo)
     # inicializa o feromônio de todas as arestas
-    for chave_aresta in self.grafo.arestas:
-      feromonio = 1.0 / (self.grafo.num_vertices * custo_guloso)
-      self.grafo.setFeromonioAresta(chave_aresta[0], chave_aresta[1],
-                                    feromonio)
+    inicializarFeromonioArestas(grafo, custo_guloso)
 
   def rodar(self):
 
@@ -163,3 +127,49 @@ class ACO:
     print('Solução final: %s | custo: %d\n' %
           (' -> '.join(str(i) for i in solucao), custo))
 
+def criarCidades(qtdCidade) -> list[int]:
+  lista = [
+        cidade for cidade in range(1, qtdCidade + 1)
+  ]
+  return lista
+  
+def criarFormigas(qtdFormiga, cidades) -> list[Formiga]:
+  formigas = []
+
+  for k in range(qtdFormiga):
+      cidade_formiga = random.choice(cidades)
+      cidades.remove(cidade_formiga)
+      formigas.append(Formiga(cidade=cidade_formiga))
+
+  return formigas
+
+def obterCustoGuloso(grafo) -> float:
+    custo_guloso = 0.0  # custo guloso
+    vertice_inicial = random.randint(1, grafo.num_vertices)  # seleciona um vértice aleatório
+    vertice_corrente = vertice_inicial
+    visitados = [vertice_corrente]  # lista de visitados
+
+    while len(visitados) < grafo.num_vertices:
+        vizinhos = grafo.vizinhos[vertice_corrente][:]
+        custos, escolhidos = [], {}
+
+        for vizinho in vizinhos:
+            if vizinho not in visitados:
+                custo = grafo.obterCustoAresta(vertice_corrente, vizinho)
+                escolhidos[custo] = vizinho
+                custos.append(custo)
+
+        min_custo = min(custos)  # pega o menor custo da lista
+        custo_guloso += min_custo  # adiciona o custo ao total
+        vertice_corrente = escolhidos[min_custo]  # atualiza o vértice corrente
+        visitados.append(vertice_corrente)  # marca o vértice corrente como visitado
+    # adiciona o custo do último visitado ao custo_guloso
+    custo_guloso += grafo.obterCustoAresta(visitados[-1], vertice_inicial)
+
+    return custo_guloso
+
+def inicializarFeromonioArestas(grafo, custo_guloso):
+    feromonio = 1.0 / (grafo.num_vertices * custo_guloso)
+    for chave_aresta in grafo.arestas:
+      grafo.setFeromonioAresta(chave_aresta[0], chave_aresta[1],
+                                    feromonio)
